@@ -1,0 +1,134 @@
+version: '3'
+
+
+
+services:
+  reverse-proxy:
+    # The official v2 Traefik docker image
+    image: traefik:v2.2
+    # Enables the web UI and tells Traefik to listen to docker
+    command:
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      #- "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      - "--certificatesresolvers.myresolver.acme.email=postmaster@${DOMAIN}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      # The HTTPS port
+      - "443:443"
+      # The Web UI (enabled by --api.insecure=true)
+      - "8080:8080"
+      #- "9000:9000"
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+      - "./letsencrypt:/letsencrypt"
+
+  gitea:
+    image: gitea/gitea:latest
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+    restart: unless-stopped
+    #networks:
+    #  - gitea
+    volumes:
+      - ./data/gitea:/data
+    ports:
+      - "222:222"
+        #depends_on:
+        #- db
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gitea.entrypoints=websecure"
+      - "traefik.http.routers.gitea.rule=Host(`gitea.${DOMAIN}`)"
+        #- "traefik.http.middlewares.gitea-https-redirect.redirectscheme.scheme=https"
+        #- "traefik.http.routers.gitea.middlewares=gitea-https-redirect"
+        #- "traefik.http.routers.gitea-secure.entrypoints=https"
+        #- "traefik.http.routers.gitea-secure.rule=Path(`/gitea`)"
+        #- "traefik.http.routers.gitea-secure.tls=true"
+        #- "traefik.http.routers.gitea-secure.tls.certresolver=http"
+      - "traefik.http.routers.gitea.service=gitea"
+      - "traefik.http.services.gitea.loadbalancer.server.port=3000"
+        #- "traefik.docker.network=gitea"
+      - "traefik.http.routers.gitea.tls.certresolver=myresolver"
+
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+    command: server /data
+    restart: unless-stopped
+    volumes:
+      - ./mnt/data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.minio.entrypoints=websecure"
+      - "traefik.http.routers.minio.rule=Host(`minio.${DOMAIN}`)"
+      - "traefik.http.routers.minio.service=minio"
+      - "traefik.http.services.minio.loadbalancer.server.port=9000"
+      - "traefik.http.routers.minio.tls.certresolver=myresolver"
+
+  elasticsearch:
+    image: elasticsearch:7.7.0
+    environment:
+      - node.name=es01
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es01
+      - cluster.initial_master_nodes=es01
+        #- bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+    expose:
+      - 9200
+    ports:
+      - "9200:9200"
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.elasticsearch.entrypoints=websecure"
+      - "traefik.http.routers.elasticsearch.rule=Host(`elasticsearch.${DOMAIN}`)"
+      - "traefik.http.routers.elasticsearch.service=elasticsearch"
+      - "traefik.http.services.elasticsearch.loadbalancer.server.port=9200"
+      - "traefik.http.routers.elasticsearch.tls.certresolver=myresolver"
+
+  kibana:
+    image: kibana:7.7.0
+    links:
+      - "elasticsearch"
+        #ports:
+        #- "5601:5601"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kibana.entrypoints=websecure"
+      - "traefik.http.routers.kibana.rule=Host(`kibana.${DOMAIN}`)"
+      - "traefik.http.routers.kibana.service=kibana"
+      - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+      - "traefik.http.routers.kibana.tls.certresolver=myresolver"
+
+  registry:
+    restart: always
+    image: registry:2
+    #ports:
+    #- 5000:5000
+    environment:
+            #REGISTRY_HTTP_TLS_CERTIFICATE: /certs/domain.crt
+            #REGISTRY_HTTP_TLS_KEY: /certs/domain.key
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+    volumes:
+      - /path/data:/var/lib/registry
+        #- /path/certs:/certs
+      - /path/auth:/auth
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.registry.entrypoints=websecure"
+      - "traefik.http.routers.registry.rule=Host(`docker.${DOMAIN}`)"
+      - "traefik.http.routers.registry.service=registry"
+      - "traefik.http.services.registry.loadbalancer.server.port=5000"
+      - "traefik.http.routers.registry.tls.certresolver=myresolver"
