@@ -26,6 +26,7 @@ echo "##### Installing Minio"
 elasticsearch() {
 echo "##### Installing Elasticsearch"
   docker-compose up -d reverse-proxy elasticsearch
+  sysctl -w vm.max_map_count=262144
 }
 
 kibana() {
