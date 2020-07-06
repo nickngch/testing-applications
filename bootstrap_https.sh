@@ -15,33 +15,33 @@ fi
 
 gitea() {
 echo "##### Installing Gitea"
-  docker-compose up -f docker-compose-https.yaml -d reverse-proxy gitea
+  docker-compose -f docker-compose-https.yaml up -d reverse-proxy gitea
 }
 
 minio() {
 echo "##### Installing Minio"
-  docker-compose up -f docker-compose-https.yaml -d reverse-proxy minio
+  docker-compose -f docker-compose-https.yaml up -d reverse-proxy minio
 }
 
 elasticsearch() {
 echo "##### Installing Elasticsearch"
-  docker-compose up -f docker-compose-https.yaml  -d reverse-proxy elasticsearch
+  docker-compose -f docker-compose-https.yaml up -d reverse-proxy elasticsearch
   sysctl -w vm.max_map_count=262144
 }
 
 kibana() {
 echo "##### Installing Kibana"
-  docker-compose up -f docker-compose-https.yaml -d reverse-proxy kibana
+  docker-compose -f docker-compose-https.yaml up -d reverse-proxy kibana
 }
 
 registry() {
 echo "##### Installing Registry"
-  docker-compose up -f docker-compose-https.yaml -d reverse-proxy registry
+  docker-compose -f docker-compose-https.yaml up -d reverse-proxy registry
 }
 
 ek() {
 echo "##### Installing Elasticsearch + Kibana"
-  docker-compose up -f docker-compose-https.yaml -d reverse-proxy elasticsearch kibana
+  docker-compose -f docker-compose-https.yaml up -d reverse-proxy elasticsearch kibana
 }
 
 
