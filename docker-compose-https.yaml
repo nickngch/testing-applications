@@ -128,7 +128,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.registry.entrypoints=websecure"
-      - "traefik.http.routers.registry.rule=Host(`docker.${DOMAIN}`)"
+      - "traefik.http.routers.registry.rule=Host(`registry.${DOMAIN}`)"
       - "traefik.http.routers.registry.service=registry"
       - "traefik.http.services.registry.loadbalancer.server.port=5000"
       - "traefik.http.routers.registry.tls.certresolver=myresolver"
