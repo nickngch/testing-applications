@@ -3,6 +3,8 @@ kind: Component
 metadata:
   name: testing-applications
   description: Some applications for quick testing
+  annotations:
+    github.com/project-slug: nickngch/testing-applications
 spec:
   type: service
   lifecycle: experiment
